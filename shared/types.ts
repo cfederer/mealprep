@@ -14,7 +14,10 @@ export interface Recipe {
   subcategory?: string;
   sourceUrl: string;
   description: string;
+  calories?: number;
   proteinGrams?: number;
+  carbGrams?: number;
+  fatGrams?: number;
   servings?: number;
   prepTime?: number;
   tags: string[];

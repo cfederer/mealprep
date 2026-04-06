@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MealSlotOptions, Recipe } from '../../shared/types';
 import { MealSlot } from '../components/MealSlot';
+import { MacroSummary } from '../components/MacroSummary';
 import { SettingsPage } from './SettingsPage';
 import { MealPrepAPI } from '../api/types';
 import { usePlanStore } from '../store/planStore';
@@ -196,6 +197,10 @@ export const WeeklyPlanner: React.FC = () => {
             💾 Save Plan →
           </button>
         </div>
+
+        {hasAnySelection && currentPlan && (
+          <MacroSummary plan={currentPlan} />
+        )}
 
         {mealOptions.breakfast && (
           <MealSlot

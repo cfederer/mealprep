@@ -52,6 +52,10 @@ Respond with ONLY a raw JSON array. No markdown, no code blocks, no explanation.
     "sourceUrl": "https://example.com/recipe",
     "description": "One sentence.",
     "servings": 4,
+    "calories": 450,
+    "proteinGrams": 30,
+    "carbGrams": 45,
+    "fatGrams": 12,
     "tags": ["tag1"],
     "ingredients": [
       { "name": "ingredient", "quantity": "1", "unit": "cup", "section": "Produce" }
@@ -59,7 +63,7 @@ Respond with ONLY a raw JSON array. No markdown, no code blocks, no explanation.
   }
 ]
 
-Max 4 ingredients per recipe. No extra fields. Start your response with [ and end with ].`;
+Max 4 ingredients per recipe. calories/proteinGrams/carbGrams/fatGrams are per serving estimates. No extra fields. Start your response with [ and end with ].`;
   }
 
   async generateMealCategory(
@@ -104,7 +108,10 @@ Max 4 ingredients per recipe. No extra fields. Start your response with [ and en
         subcategory: '',
         sourceUrl: item.sourceUrl || 'https://example.com',
         description: item.description || '',
+        calories: item.calories,
         proteinGrams: item.proteinGrams,
+        carbGrams: item.carbGrams,
+        fatGrams: item.fatGrams,
         servings: item.servings,
         prepTime: item.prepTime,
         tags: item.tags || [],
