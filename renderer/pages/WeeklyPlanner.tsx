@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { MealSlotOptions, Recipe } from '../../shared/types';
+import { MealSlotOptions } from '../../shared/types';
 import { MealSlot } from '../components/MealSlot';
-import { MacroSummary } from '../components/MacroSummary';
 import { SettingsPage } from './SettingsPage';
-import { MealPrepAPI } from '../api/types';
+
 import { usePlanStore } from '../store/planStore';
 
 export const WeeklyPlanner: React.FC = () => {
@@ -19,25 +18,14 @@ export const WeeklyPlanner: React.FC = () => {
 
   const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+
   const [showSettings, setShowSettings] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
   const { currentPlan, setLoading, setError } = usePlanStore();
 
   useEffect(() => {
-    loadRecipes();
     checkApiKey();
   }, []);
-
-  const loadRecipes = async () => {
-    try {
-      const loaded = await window.mealPrepAPI.recipes.getAll();
-      setRecipes(loaded);
-    } catch (err) {
-      console.error('Failed to load recipes:', err);
-      setError('Failed to load recipes');
-    }
-  };
 
   const checkApiKey = async () => {
     try {
@@ -70,10 +58,19 @@ export const WeeklyPlanner: React.FC = () => {
     }
   };
 
+  const getPinnedRecipes = (category: string) => {
+    if (!currentPlan) return [];
+    if (category === 'breakfast') return currentPlan.breakfast ? [currentPlan.breakfast.recipe] : [];
+    if (category === 'lunch') return currentPlan.lunch ? [currentPlan.lunch.recipe] : [];
+    if (category === 'dinner') return (currentPlan.dinner || []).map((m) => m.recipe);
+    return [];
+  };
+
   const handleRegenerateCategory = async (category: string) => {
     setLoadingCategory(category);
     try {
-      const result = await window.mealPrepAPI.meals.generateCategory(category);
+      const pinned = getPinnedRecipes(category);
+      const result = await window.mealPrepAPI.meals.generateCategory(category, pinned);
       setMealOptions((prev) => ({ ...prev, [category]: result }));
     } catch (err) {
       console.error('Failed to regenerate category:', err);
@@ -119,6 +116,7 @@ export const WeeklyPlanner: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   const handleClearPlan = () => {
     if (window.confirm('Clear the current meal plan?')) {
@@ -197,10 +195,6 @@ export const WeeklyPlanner: React.FC = () => {
             💾 Save Plan →
           </button>
         </div>
-
-        {hasAnySelection && currentPlan && (
-          <MacroSummary plan={currentPlan} />
-        )}
 
         {mealOptions.breakfast && (
           <MealSlot

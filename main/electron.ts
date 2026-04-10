@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { GoogleDriveStore, GoogleDriveConfig } from './google-drive';
@@ -6,13 +6,13 @@ import { GoogleOAuthHandler } from './google-oauth';
 import { generateAllMeals, generateCategoryOptions } from './claude';
 import { Recipe } from '../shared/types';
 import { prepareRecipeForCatalog } from '../shared/recipeUtils';
+import { buildShoppingLink } from './instacart';
 import { settingsManager } from './settings';
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 let mainWindow: BrowserWindow | null = null;
 let driveStore: GoogleDriveStore | null = null;
-let recipeCache: Recipe[] = [];
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -134,7 +134,7 @@ async function initializeDriveStore() {
     }
 
     driveStore = new GoogleDriveStore(googleDriveConfig);
-    recipeCache = await driveStore.readRecipes();
+    await driveStore.readRecipes();
   } catch (err) {
     console.warn('Could not initialize Google Drive store:', err);
   }
@@ -169,13 +169,13 @@ ipcMain.handle('meals:searchRecipe', async (_event, query: string, category: str
   }
 });
 
-ipcMain.handle('meals:generateCategory', async (_event, category: string) => {
+ipcMain.handle('meals:generateCategory', async (_event, category: string, pinnedRecipes: Recipe[] = []) => {
   try {
     const apiKey = await settingsManager.getClaudeApiKey();
     if (!apiKey) throw new Error('Claude API key not configured.');
 
     let recentIds: string[] = [];
-    let recipes: any[] = [];
+    let recipes: Recipe[] = [];
     if (driveStore) {
       try {
         recentIds = await driveStore.getRecentRecipeUses(4);
@@ -192,6 +192,7 @@ ipcMain.handle('meals:generateCategory', async (_event, category: string) => {
       recentRecipeIds: recentIds,
       apiKey,
       userPreferences,
+      pinnedRecipes,
     });
   } catch (err) {
     console.error('Error generating category:', err);
@@ -268,6 +269,27 @@ ipcMain.handle('recipe:save', async (event, recipe) => {
     return false;
   }
 });
+
+// Instacart Handlers
+ipcMain.handle('instacart:generateLink', async (_event, plan) => {
+  try {
+    const apiKey = await settingsManager.getInstacartApiKey();
+    if (!apiKey) throw new Error('Instacart API key not configured.');
+    const url = await buildShoppingLink(plan, apiKey);
+    shell.openExternal(url);
+    return { success: true, url };
+  } catch (err) {
+    console.error('Instacart error:', err);
+    return { success: false, error: (err as Error).message };
+  }
+});
+
+ipcMain.handle('settings:getInstacartApiKey', async () => settingsManager.getInstacartApiKey());
+ipcMain.handle('settings:setInstacartApiKey', async (_event, key: string) => {
+  await settingsManager.setInstacartApiKey(key);
+  return true;
+});
+ipcMain.handle('settings:hasInstacartApiKey', async () => settingsManager.hasInstacartApiKey());
 
 // Settings Handlers
 ipcMain.handle('settings:getClaudeApiKey', async () => {

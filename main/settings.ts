@@ -23,6 +23,7 @@ interface AppSettings {
   userPreferences?: string;
   lastSyncDate?: string;
   googleDriveSpreadsheetId?: string;
+  instacartApiKey?: string;
 }
 
 class SettingsManager {
@@ -116,6 +117,18 @@ class SettingsManager {
 
   async setGoogleDriveSpreadsheetId(id: string): Promise<void> {
     this.set('googleDriveSpreadsheetId', id);
+  }
+
+  async getInstacartApiKey(): Promise<string | undefined> {
+    return this.get('instacartApiKey');
+  }
+
+  async setInstacartApiKey(key: string): Promise<void> {
+    this.set('instacartApiKey', key);
+  }
+
+  async hasInstacartApiKey(): Promise<boolean> {
+    return !!this.get('instacartApiKey');
   }
 
   async clear(): Promise<void> {

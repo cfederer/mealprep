@@ -7,6 +7,7 @@ interface SettingsPageProps {
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
   const [claudeKey, setClaudeKey] = useState('');
+  const [instacartKey, setInstacartKey] = useState('');
   const [userPreferences, setUserPreferences] = useState('');
   const [oauthClientId, setOauthClientId] = useState('');
   const [oauthClientSecret, setOauthClientSecret] = useState('');
@@ -25,6 +26,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       setLoading(true);
       const key = await window.mealPrepAPI.settings.getClaudeApiKey();
       if (key) setClaudeKey(key);
+
+      const instacart = await window.mealPrepAPI.settings.getInstacartApiKey();
+      if (instacart) setInstacartKey(instacart);
 
       const prefs = await window.mealPrepAPI.settings.getUserPreferences();
       if (prefs) setUserPreferences(prefs);
@@ -66,6 +70,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
 
       await window.mealPrepAPI.settings.setClaudeApiKey(claudeKey);
       await window.mealPrepAPI.settings.setUserPreferences(userPreferences);
+      if (instacartKey.trim()) {
+        await window.mealPrepAPI.settings.setInstacartApiKey(instacartKey);
+      }
 
       if (oauthClientId.trim() && oauthClientSecret.trim()) {
         await window.mealPrepAPI.oauth.setConfig({
@@ -150,14 +157,29 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
             />
             <p className="text-xs text-gray-600 mt-2">
               Get your API key from{' '}
-              <a
-                href="https://console.anthropic.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
+              <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                 console.anthropic.com
               </a>
+            </p>
+          </div>
+
+          <div className="mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Instacart Connect API Key
+            </label>
+            <input
+              type="password"
+              value={instacartKey}
+              onChange={(e) => setInstacartKey(e.target.value)}
+              placeholder="Instacart Connect API key"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-600 mt-2">
+              Get your API key from{' '}
+              <a href="https://developer.instacart.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                developer.instacart.com
+              </a>
+              . Used to generate a shareable shopping link that opens in your browser.
             </p>
           </div>
         </div>

@@ -6,11 +6,15 @@ export interface MealPrepAPI {
   };
   meals: {
     generate: () => Promise<any>;
-    generateCategory: (category: string) => Promise<any>;
+    generateCategory: (category: string, pinnedRecipes?: Recipe[]) => Promise<any>;
     searchRecipe: (query: string, category: string) => Promise<any>;
   };
   plan: {
     save: (plan: any) => Promise<{ success: boolean; fileUrl: string | null }>;
+  };
+  instacart: {
+    generateLink: (plan: any) => Promise<{ success: boolean; url?: string; error?: string }>;
+    hasApiKey: () => Promise<boolean>;
   };
   recipe: {
     save: (recipe: any) => Promise<boolean>;
@@ -21,6 +25,8 @@ export interface MealPrepAPI {
     getUserPreferences: () => Promise<string | undefined>;
     setUserPreferences: (prefs: string) => Promise<void>;
     hasClaudeApiKey: () => Promise<boolean>;
+    getInstacartApiKey: () => Promise<string | undefined>;
+    setInstacartApiKey: (key: string) => Promise<void>;
   };
   oauth: {
     hasTokens: () => Promise<boolean>;

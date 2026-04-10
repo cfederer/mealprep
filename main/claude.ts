@@ -7,6 +7,7 @@ export interface GenerateOptionsArgs {
   recentRecipeIds: string[];
   apiKey: string;
   userPreferences?: string;
+  pinnedRecipes?: Recipe[]; // recipes already selected by user — preserved as-is
   _delayMs?: number; // injectable for testing
 }
 
@@ -38,29 +39,41 @@ function selectBreakfastFromCatalog(candidates: Recipe[]): Recipe[] {
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function generateCategoryOptions(args: GenerateOptionsArgs): Promise<MealSlotOptions> {
-  const { category, existingRecipes, recentRecipeIds, apiKey, userPreferences, _delayMs = 15000 } = args;
+  const { category, existingRecipes, recentRecipeIds, apiKey, userPreferences, pinnedRecipes = [], _delayMs = 15000 } = args;
 
   const client = new ClaudeClient(apiKey);
-
-  const catalogCandidates = existingRecipes.filter(
-    (r) => r.category === category && !recentRecipeIds.includes(r.id)
-  );
+  const pinnedIds = new Set(pinnedRecipes.map((r) => r.id));
+  const pinnedNames = new Set(pinnedRecipes.map((r) => r.name.toLowerCase()));
 
   // Breakfast: 4 egg muffins + 4 scrambles + 2 other (catalog) + 2 new = 10 total
   // Lunch: 8 catalog + 2 new = 10
   // Dinner: 10 catalog + 10 new = 20
   const totalTarget = category === 'dinner' ? 20 : 10;
   const newTarget = category === 'dinner' ? 10 : 2;
-  const catalogTarget = totalTarget - newTarget;
+
+  // Remaining slots after accounting for pinned recipes
+  const remainingTotal = Math.max(0, totalTarget - pinnedRecipes.length);
+  const remainingNew = Math.min(newTarget, remainingTotal);
+  const remainingCatalog = remainingTotal - remainingNew;
+
+  const catalogCandidates = existingRecipes.filter(
+    (r) =>
+      r.category === category &&
+      !recentRecipeIds.includes(r.id) &&
+      !pinnedIds.has(r.id) &&
+      !pinnedNames.has(r.name.toLowerCase())
+  );
 
   const chosenCatalog =
-    category === 'breakfast'
-      ? selectBreakfastFromCatalog(catalogCandidates).slice(0, catalogTarget)
-      : pickOrAll(catalogCandidates, catalogTarget);
+    remainingCatalog === 0
+      ? []
+      : category === 'breakfast'
+        ? selectBreakfastFromCatalog(catalogCandidates).slice(0, remainingCatalog)
+        : pickOrAll(catalogCandidates, remainingCatalog);
 
-  // Generate new recipes — Claude returns 2 per call
+  // Generate new AI recipes — Claude returns 2 per call
   let generatedRecipes: Recipe[] = [];
-  const callsNeeded = Math.ceil(newTarget / 2);
+  const callsNeeded = Math.ceil(remainingNew / 2);
   for (let i = 0; i < callsNeeded; i++) {
     try {
       const recipes = await client.generateMealCategory(
@@ -73,15 +86,15 @@ export async function generateCategoryOptions(args: GenerateOptionsArgs): Promis
     } catch (err) {
       console.error(`Failed to generate ${category} options (call ${i + 1}):`, err);
     }
-    // Rate limit: delay between calls except after the last one
     if (i < callsNeeded - 1) await delay(_delayMs);
   }
 
   const selectedNew = shuffle(generatedRecipes)
-    .slice(0, newTarget)
+    .slice(0, remainingNew)
     .map((r) => ({ ...r, isFromCatalog: false }));
 
-  const combined = [...chosenCatalog, ...selectedNew];
+  // Pinned recipes go first, then catalog, then new AI
+  const combined = [...pinnedRecipes, ...chosenCatalog, ...selectedNew];
   const seen = new Set<string>();
   const options = combined.filter((r) => {
     const key = r.name.toLowerCase();
